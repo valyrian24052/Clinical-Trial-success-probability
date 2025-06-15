@@ -50,8 +50,7 @@ def read_trial_ids_from_csv(input_csv_path):
     return nct_ids
 
 def main():
-    # Path to the input CSV file containing Trial_IDs
-    INPUT_CSV_PATH = 'Clinical-Trial-success-probability/Train.csv'
+    INPUT_CSV_PATH = 'Train.csv'
     OUTPUT_FILENAME = 'train_clinical_trials_data.csv'
 
     API_HEADERS = {
@@ -64,10 +63,7 @@ def main():
         'fields': 'NCT Number|Study Title|Study URL|Acronym|Study Status|Brief Summary|Study Results|Conditions|Interventions|Primary Outcome Measures|Secondary Outcome Measures|Other Outcome Measures|Sponsor|Collaborators|Sex|Age|Phases|Enrollment|Funder Type|Study Type|Study Design|Start Date|Primary Completion Date|Completion Date|First Posted|Results First Posted|Last Update Posted|Locations|Study Documents',
     }
 
-    # Read NCT IDs from the input CSV file
     NCT_IDS = read_trial_ids_from_csv(INPUT_CSV_PATH)
-
-    # Fetch data for each NCT ID and save it to the output CSV file
     fetch_clinical_trials_data(NCT_IDS, OUTPUT_FILENAME, API_PARAMS, API_HEADERS)
 
 if __name__ == "__main__":
