@@ -6,7 +6,7 @@ def fetch_clinical_trials_data(nct_ids, output_filename, api_params, api_headers
         header_written = False
 
         for nct_id in nct_ids:
-            url = f"https://clinicaltrials.gov/api/v2/studies/{nct_id}" 
+            url = f"https://clinicaltrials.gov/api/v2/studies/{nct_id}"    
             print(f"Fetching data for {nct_id}...")
 
             try:
@@ -40,9 +40,19 @@ def fetch_clinical_trials_data(nct_ids, output_filename, api_params, api_headers
 
     print(f"\nProcessing complete. Data saved to '{output_filename}'.")
 
+def read_trial_ids_from_csv(input_csv_path):
+    nct_ids = []
+    with open(input_csv_path, mode='r', encoding='utf-8') as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            if 'Trial_ID' in row:
+                nct_ids.append(row['Trial_ID'].strip())
+    return nct_ids
+
 def main():
-    NCT_IDS = ['NCT02125461', 'NCT01721746']
-    OUTPUT_FILENAME = 'clinical_trials_data.csv'
+    # Path to the input CSV file containing Trial_IDs
+    INPUT_CSV_PATH = 'Clinical-Trial-success-probability/Train.csv'
+    OUTPUT_FILENAME = 'train_clinical_trials_data.csv'
 
     API_HEADERS = {
         'accept': 'text/csv',
@@ -54,6 +64,10 @@ def main():
         'fields': 'NCT Number|Study Title|Study URL|Acronym|Study Status|Brief Summary|Study Results|Conditions|Interventions|Primary Outcome Measures|Secondary Outcome Measures|Other Outcome Measures|Sponsor|Collaborators|Sex|Age|Phases|Enrollment|Funder Type|Study Type|Study Design|Start Date|Primary Completion Date|Completion Date|First Posted|Results First Posted|Last Update Posted|Locations|Study Documents',
     }
 
+    # Read NCT IDs from the input CSV file
+    NCT_IDS = read_trial_ids_from_csv(INPUT_CSV_PATH)
+
+    # Fetch data for each NCT ID and save it to the output CSV file
     fetch_clinical_trials_data(NCT_IDS, OUTPUT_FILENAME, API_PARAMS, API_HEADERS)
 
 if __name__ == "__main__":
