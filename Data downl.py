@@ -1,21 +1,26 @@
-import requests, csv, io, time
+import requests
+import csv
+import io
+import time
+from tqdm import tqdm  
 
 def fetch_clinical_trials_data(nct_ids, output_filename, api_params, api_headers):
+    errors = []  
     with open(output_filename, 'w', newline='', encoding='utf-8') as csv_file:
         csv_writer = csv.writer(csv_file)
         header_written = False
 
-        for nct_id in nct_ids:
-            url = f"https://clinicaltrials.gov/api/v2/studies/{nct_id}"    
-            print(f"Fetching data for {nct_id}...")
+
+        for nct_id in tqdm(nct_ids, desc="Fetching Data", unit="trial"):
+            url = f"https://clinicaltrials.gov/api/v2/studies/{nct_id}" 
 
             try:
                 response = requests.get(url, params=api_params, headers=api_headers, timeout=30)
-                response.raise_for_status()
+                response.raise_for_status()  # Raise an error for HTTP issues (4xx/5xx)
                 text_data = response.text
 
                 if not text_data.strip():
-                    print(f"  Warning: Received an empty but successful response for {nct_id}. Skipping.")
+                    errors.append(f"Warning: Received an empty but successful response for {nct_id}. Skipping.")
                     continue
 
                 string_file = io.StringIO(text_data)
@@ -29,16 +34,19 @@ def fetch_clinical_trials_data(nct_ids, output_filename, api_params, api_headers
                 for data_row in csv_reader:
                     csv_writer.writerow(data_row)
 
-                print(f"  Success! Wrote data for {nct_id}.")
-
             except requests.exceptions.HTTPError as e:
-                print(f"  Error for {nct_id}: {e}")
+                errors.append(f"Error for {nct_id}: {e}")
             except requests.exceptions.RequestException as e:
-                print(f"  A network error occurred for {nct_id}: {e}")
+                errors.append(f"Network error for {nct_id}: {e}")
+            except Exception as e:
+                errors.append(f"Unexpected error for {nct_id}: {e}")
 
-            time.sleep(1)
-
-    print(f"\nProcessing complete. Data saved to '{output_filename}'.")
+    if errors:
+        print("\nErrors encountered during processing:")
+        for error in errors:
+            print(error)
+    else:
+        print("\nProcessing completed successfully.")
 
 def read_trial_ids_from_csv(input_csv_path):
     nct_ids = []
