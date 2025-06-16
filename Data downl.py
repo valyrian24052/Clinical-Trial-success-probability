@@ -1,68 +1,61 @@
 import requests
-import csv
+import pandas as pd
 import io
-from tqdm import tqdm  
+from tqdm import tqdm
 
-def fetch_clinical_trials_data(nct_ids, output_filename, api_params, api_headers):
-    errors = []  
-    with open(output_filename, 'w', newline='', encoding='utf-8') as csv_file:
-        csv_writer = csv.writer(csv_file)
-        header_written = False
+def fetch_clinical_trials_data(nct_ids, output_excel_filename, api_params, api_headers):
+    all_data = []
+    errors = []
 
+    for nct_id in tqdm(nct_ids, desc="Fetching Data", unit="trial"):
+        url = f"https://clinicaltrials.gov/api/v2/studies/{nct_id}"
+        try:
+            response = requests.get(url, params=api_params, headers=api_headers, timeout=30)
+            response.raise_for_status()
+            text_data = response.text
 
-        for nct_id in tqdm(nct_ids, desc="Fetching Data", unit="trial"):
-            url = f"https://clinicaltrials.gov/api/v2/studies/{nct_id}" 
+            if not text_data.strip():
+                errors.append(f"Warning: Empty response for {nct_id}")
+                continue
 
-            try:
-                response = requests.get(url, params=api_params, headers=api_headers, timeout=30)
-                response.raise_for_status()  # Raise an error for HTTP issues (4xx/5xx)
-                text_data = response.text
+            # Read CSV into DataFrame
+            df = pd.read_csv(io.StringIO(text_data))
+            df['NCT_ID'] = nct_id  # Optionally tag which ID this came from
+            all_data.append(df)
 
-                if not text_data.strip():
-                    errors.append(f"Warning: Received an empty but successful response for {nct_id}. Skipping.")
-                    continue
+        except requests.exceptions.HTTPError as e:
+            errors.append(f"HTTP error for {nct_id}: {e}")
+        except requests.exceptions.RequestException as e:
+            errors.append(f"Request error for {nct_id}: {e}")
+        except Exception as e:
+            errors.append(f"Unexpected error for {nct_id}: {e}")
 
-                string_file = io.StringIO(text_data)
-                csv_reader = csv.reader(string_file)
-                header = next(csv_reader)
-
-                if not header_written:
-                    csv_writer.writerow(header)
-                    header_written = True
-
-                for data_row in csv_reader:
-                    csv_writer.writerow(data_row)
-
-            except requests.exceptions.HTTPError as e:
-                errors.append(f"Error for {nct_id}: {e}")
-            except requests.exceptions.RequestException as e:
-                errors.append(f"Network error for {nct_id}: {e}")
-            except Exception as e:
-                errors.append(f"Unexpected error for {nct_id}: {e}")
+    if all_data:
+        combined_df = pd.concat(all_data, ignore_index=True)
+        # Save to Excel (recommended format: .xlsx for compatibility)
+        combined_df.to_excel(output_excel_filename, index=False, engine='openpyxl')
+        print(f"\nSaved {len(combined_df)} records to {output_excel_filename}")
+    else:
+        print("\nNo data was fetched.")
 
     if errors:
-        print("\nErrors encountered during processing:")
-        for error in errors:
-            print(error)
-    else:
-        print("\nProcessing completed successfully.")
+        print("\nErrors encountered:")
+        for err in errors:
+            print(err)
 
 def read_trial_ids_from_csv(input_csv_path):
-    nct_ids = []
-    with open(input_csv_path, mode='r', encoding='utf-8') as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            if 'Trial_ID' in row:
-                nct_ids.append(row['Trial_ID'].strip())
-    return nct_ids
+    df = pd.read_csv(input_csv_path)
+    if 'Trial_ID' not in df.columns:
+        raise ValueError("The input CSV must contain a 'Trial_ID' column.")
+    return df['Trial_ID'].dropna().astype(str).tolist()
 
 def main():
-    INPUT_CSV_PATH = 'Test.csv'
-    OUTPUT_FILENAME = 'Test_clinical_trials_data.csv'
+    INPUT_CSV_PATH = 'Ini data ids/Train.csv'
+    OUTPUT_EXCEL_FILENAME = 'Train test Data/Train_clinical_trials_data.xlsx'
 
     API_HEADERS = {
         'accept': 'text/csv',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0'
     }
 
     API_PARAMS = {
@@ -70,8 +63,8 @@ def main():
         'fields': 'NCT Number|Study Title|Study URL|Acronym|Study Status|Brief Summary|Study Results|Conditions|Interventions|Primary Outcome Measures|Secondary Outcome Measures|Other Outcome Measures|Sponsor|Collaborators|Sex|Age|Phases|Enrollment|Funder Type|Study Type|Study Design|Start Date|Primary Completion Date|Completion Date|First Posted|Results First Posted|Last Update Posted|Locations|Study Documents',
     }
 
-    NCT_IDS = read_trial_ids_from_csv(INPUT_CSV_PATH)
-    fetch_clinical_trials_data(NCT_IDS, OUTPUT_FILENAME, API_PARAMS, API_HEADERS)
+    nct_ids = read_trial_ids_from_csv(INPUT_CSV_PATH)
+    fetch_clinical_trials_data(nct_ids, OUTPUT_EXCEL_FILENAME, API_PARAMS, API_HEADERS)
 
 if __name__ == "__main__":
     main()
