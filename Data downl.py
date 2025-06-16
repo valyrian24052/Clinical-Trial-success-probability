@@ -57,8 +57,8 @@ def read_trial_ids_from_csv(input_csv_path):
     return nct_ids
 
 def main():
-    INPUT_CSV_PATH = 'Train.csv'
-    OUTPUT_FILENAME = 'train_clinical_trials_data.csv'
+    INPUT_CSV_PATH = 'Test.csv'
+    OUTPUT_FILENAME = 'Test_clinical_trials_data.csv'
 
     API_HEADERS = {
         'accept': 'text/csv',
