@@ -1,7 +1,6 @@
 import requests
 import csv
 import io
-import time
 from tqdm import tqdm  
 
 def fetch_clinical_trials_data(nct_ids, output_filename, api_params, api_headers):
