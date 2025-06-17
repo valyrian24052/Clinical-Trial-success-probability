@@ -20,7 +20,7 @@ def fetch_clinical_trials_data(nct_ids, output_excel_filename, api_params, api_h
 
             # Read CSV into DataFrame
             df = pd.read_csv(io.StringIO(text_data))
-            df['NCT_ID'] = nct_id  # Optionally tag which ID this came from
+            df['NCT_ID'] = nct_id  
             all_data.append(df)
 
         except requests.exceptions.HTTPError as e:
@@ -32,7 +32,6 @@ def fetch_clinical_trials_data(nct_ids, output_excel_filename, api_params, api_h
 
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
-        # Save to Excel (recommended format: .xlsx for compatibility)
         combined_df.to_excel(output_excel_filename, index=False, engine='openpyxl')
         print(f"\nSaved {len(combined_df)} records to {output_excel_filename}")
     else:
