@@ -18,7 +18,6 @@ def fetch_clinical_trials_data(nct_ids, output_excel_filename, api_params, api_h
                 errors.append(f"Warning: Empty response for {nct_id}")
                 continue
 
-            # Read CSV into DataFrame
             df = pd.read_csv(io.StringIO(text_data))
             df['NCT_ID'] = nct_id  
             all_data.append(df)
