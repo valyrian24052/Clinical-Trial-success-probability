@@ -4,8 +4,8 @@ import ast
 from collections import defaultdict
 
 # Define the input and output file paths
-input_file = 'Train test Data/Train_clinical_trials_data.xlsx'
-output_file = 'Processed data/Processed_Train_clinical_trials_data.xlsx'
+input_file = 'Train test Data/Test_clinical_trials_data.xlsx'
+output_file = 'Processed data/Processed_Test_clinical_trials_data.xlsx'
 
 # Define the date formats to try when parsing dates
 formats = [
@@ -26,16 +26,26 @@ def parse_mixed_date(date_str):
     return pd.NaT
 
 def get_study_design_cols(study_design_series):
-    """Parses the 'Study Design' Series into a DataFrame of new columns."""
+    """
+    Parses the 'Study Design' Series into a DataFrame of new columns
+    using robust string splitting.
+    """
     print("Processing Study Design column...")
-    def parse_design(design_str):
-        try:
-            return ast.literal_eval(str(design_str))
-        except (ValueError, SyntaxError):
-            return {}
-
-    study_design_dicts = study_design_series.apply(parse_design)
-    return pd.DataFrame(study_design_dicts.tolist())
+    all_rows_data = []
+    for design_str in study_design_series:
+        row_dict = {}
+        if pd.notna(design_str):
+            # Split by the pipe character '|' to get each key-value pair
+            parts = str(design_str).split('|')
+            for part in parts:
+                # Split by the colon ':' to separate the key and value
+                if ':' in part:
+                    key, value = part.split(':', 1)
+                    row_dict[key.strip()] = value.strip()
+        all_rows_data.append(row_dict)
+    
+    # Create the DataFrame from the list of dictionaries
+    return pd.DataFrame(all_rows_data)
 
 def get_intervention_cols(interventions_series):
     """Parses the 'Interventions' Series into a DataFrame of new columns."""
@@ -66,27 +76,18 @@ def get_intervention_cols(interventions_series):
 def drop_high_null_columns(df, threshold=1):
 
     """
-
     Drops columns from a DataFrame that have a percentage of null values
-
     exceeding a specified threshold.
-
     """
-
     null_percentages = df.isnull().sum() / len(df)
-
     cols_to_drop = null_percentages[null_percentages > threshold].index.tolist()
 
     if cols_to_drop:
-
         print(f"Dropping columns with >{threshold*100:.0f}% nulls: {cols_to_drop}")
-
         df = df.drop(columns=cols_to_drop)
 
     else:
-
         print("No columns exceeded the null value threshold.")
-
     return df
 
 def process_clinical_trials(file_path, output_path):
@@ -115,7 +116,7 @@ def process_clinical_trials(file_path, output_path):
     df['Results_Delay_Days'] = (df['Results First Posted Date'] - df['Start Date']).dt.days.fillna(-1)
     df = df.rename(columns={'Study Status': 'Study_Status'})
     df['Low_Enrollment'] = (df['Enrollment'].fillna(0) < 200).astype(int)
-    df['Outcome_numeric'] = df['Outcome'].apply(lambda x: 1 if x == 'Failed' else 0)
+    # df['Outcome_numeric'] = df['Outcome'].apply(lambda x: 1 if x == 'Failed' else 0)
     df['Suspended_Terminated'] = df['Study_Status'].apply(lambda x: 1 if x in ['SUSPENDED', 'TERMINATED'] else 0)
     
     # === Drop redundant columns using your original list ===
@@ -128,20 +129,46 @@ def process_clinical_trials(file_path, output_path):
     ]
     df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
     
-    # === Select the base columns in the desired order ===
-    base_columns = [
-        'NCT Number', 'Outcome', 'Outcome_numeric', 'Has_Results', 'Low_Enrollment',
-        'Results_Delay_Days', 'Suspended_Terminated', 'Conditions','Study_Context', 'Outcome_Details', 'Sponsor', 'Funder Type'
-    ]
-    df_base = df[[col for col in base_columns if col in df.columns]]
+
     
     # === Concatenate the base DataFrame with the new processed columns ===
     print("Concatenating base data with new columns...")
-    df_final = pd.concat([df_base, study_design_df, interventions_df], axis=1)
+    df_final = pd.concat([df, study_design_df, interventions_df], axis=1)
     # === Drop columns with high null percentage ===
-    df_final = drop_high_null_columns(df_final, threshold=0.9)
+    df_final = drop_high_null_columns(df_final, threshold=1)
 
-    # Save the final processed file
+    # === Select the base columns in the desired order ===
+    base_columns = [
+    'NCT Number',
+    'Outcome',
+    'Outcome_numeric',
+    'Has_Results',
+    'Low_Enrollment',
+    'Results_Delay_Days',
+    'Suspended_Terminated',
+    'Conditions',
+    'Study_Context',
+    'Outcome_Details',
+    'Sponsor',
+    'Funder Type',
+    'Allocation',
+    'Intervention Model',
+    'Masking',
+    'Primary Purpose',
+    'BIOLOGICAL_1',
+    'COMBINATION_PRODUCT_1',
+    'DEVICE_1',
+    'DRUG_1',
+    'DRUG_2',
+    'DRUG_3',
+    'OTHER_1',
+    'OTHER_2',
+    'PROCEDURE_1',
+    'RADIATION_1'
+]
+    df_final = df_final[[col for col in base_columns if col in df_final.columns]]
+
+
     df_final.to_excel(output_path, index=False)
     print(f"\nProcessing complete. Processed file saved at: {output_path}")
     print(f"Final dataset has {df_final.shape[0]} rows and {df_final.shape[1]} columns.")
