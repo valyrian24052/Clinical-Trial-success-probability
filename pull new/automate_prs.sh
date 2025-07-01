@@ -1,19 +1,16 @@
-  #!/bin/bash
 
-REPO_PATH="/path/to/your/repo"  # 👈 Update this to your local repo path
+
+
+REPO_PATH="/path/to/your/repo"
 cd "$REPO_PATH"
 
 TOTAL_PRS=100
 
 for i in $(seq 1 $TOTAL_PRS); do
     BRANCH_NAME="backdated-branch-$i"
-
     echo "🔧 Creating PR #$i on branch $BRANCH_NAME..."
-
-    # Checkout new branch
     git checkout -b "$BRANCH_NAME" main
 
-    # Run inline Python to generate backdated commits
     python3 - <<END
 import os
 from random import randint, sample
@@ -29,13 +26,8 @@ for d in days_back:
     os.system(f'git commit --date="{date_str}" -m "Backdated commit from {date_str}"')
 END
 
-    # Push to remote
     git push origin "$BRANCH_NAME"
-
-    # Create PR
     gh pr create --base main --head "$BRANCH_NAME" --title "Automated PR #$i" --body "Backdated commits for PR $i"
-
-    # Merge PR and delete branch
     gh pr merge "$BRANCH_NAME" --merge --delete-branch --yes
 
     echo "✅ Merged PR #$i"
