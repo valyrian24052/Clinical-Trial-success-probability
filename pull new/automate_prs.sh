@@ -33,4 +33,4 @@ END
     echo "✅ Merged PR #$i"
 done
 
-echo "🎉 All $TOTAL_PRS PRs created, merged, and cleaned up!"
+echo "All $TOTAL_PRS PRs created, merged, and cleaned up!"
